@@ -2,9 +2,9 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace stock_api.Exchanges.Binance
+namespace stock_api.Features.ExchangeFeatures.BinanceFeature
 {
-    public class BinanceExcange
+    public class BinanceHelper
     {
         // Binance API documentation: https://binance-docs.github.io/apidocs/#change-log
 
@@ -14,34 +14,42 @@ namespace stock_api.Exchanges.Binance
         private HttpClient _httpClient = new HttpClient();
 
 
-        public async Task<bool> AddBalanceToDatabase(CustomDbContext db)
+        /// <summary>
+        /// Get the non-zero Binance balance from the account.
+        /// </summary>
+        /// <returns>A JArray with the assets as JTokens.</returns>
+        public async Task<JArray> GetBalance()
         {
+            JArray balance = new JArray();
             JObject binanceAccount = await SendSignedRequest("/api/v3/account");
-            var balance = binanceAccount["balances"];
-            if (balance == null)
+            var accountBalance = binanceAccount["balances"];
+            if (accountBalance == null)
             {
-                return false;
+                return new JArray();
             }
 
-            foreach (var asset in balance)
+            foreach (var asset in accountBalance)
             {
                 double amount = (double)asset["free"];
                 if (amount > 0.0)
-                {
-                    string name = asset["asset"].ToString();
-                    if (!await AddAssetToDatabase(name, amount, db))
-                    {
-                        return false;
-                    }
-                }
+                    balance.Add(asset);
             }
 
-            return true;
+            return balance;
         }
 
 
-        public async Task<bool> AddAssetToDatabase(string name, double amount, CustomDbContext db)
+        /// <summary>
+        /// Get a Stock object populated as a crypto stock. Will also find the price of the crypto.
+        /// </summary>
+        /// <param name="asset">The asset to make into a Stock object.</param>
+        /// <param name="userId">The ID of the user who owns the stock.</param>
+        /// <returns>A populated Stock object</returns>
+        public async Task<Stock> GetDefaultCryptoStock(JToken asset, int userId)
         {
+            string name = asset["asset"].ToString();
+            double amount = (double)asset["free"];
+
             double price = await GetPriceOfCrypto(name);
 
             Stock stock = new Stock
@@ -51,24 +59,24 @@ namespace stock_api.Exchanges.Binance
                 Type = StockType.Crypto,
                 Price = price,
                 Currency = "USD",
-                UserId = 2
+                UserId = userId
             };
 
-            try
-            {
-                await db.Stocks.AddAsync(stock);
-                await db.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                return false;
-            }
-
-            return true;
+            return stock;
         }
 
 
-
+        /// <summary>
+        /// Get the price of a crypto in USD. This method compare the crypto to USDT.
+        /// </summary>
+        /// <param name="name">The name of the crypto you want the price of.</param>
+        /// <example>For example:
+        /// <code>
+        /// double btcPrice = await GetPriceOfCrypto("btc");
+        /// </code>
+        /// results in <c>btcPrice</c> having the value 42495.00.
+        /// </example>
+        /// <returns>The price of the crypto in USD. -1.0 if an error occur.</returns>
         public async Task<double> GetPriceOfCrypto(string name)
         {
             // Compare the price to the stable coin "USDT"
@@ -135,11 +143,11 @@ namespace stock_api.Exchanges.Binance
         }
 
 
-            /// <summary>
-            /// Gets a timestamp used when sending request via the Binance API.
-            /// </summary>
-            /// <returns>A time in seconds.</returns>
-            public async Task<long> GetTimeStamp()
+        /// <summary>
+        /// Gets a timestamp used when sending request via the Binance API.
+        /// </summary>
+        /// <returns>A time in seconds.</returns>
+        public async Task<long> GetTimeStamp()
         {
             string result = "";
             HttpResponseMessage response = await _httpClient.GetAsync(_baseUrl + "/api/v3/time");
@@ -186,5 +194,6 @@ namespace stock_api.Exchanges.Binance
 
             return sb.ToString();
         }
+
     }
 }

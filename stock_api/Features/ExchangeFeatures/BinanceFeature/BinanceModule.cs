@@ -1,10 +1,10 @@
-﻿using stock_api.Exchanges.Binance;
+﻿using Newtonsoft.Json.Linq;
 
 namespace stock_api.Features.ExchangeFeatures.BinanceFeature
 {
     public class BinanceModule : IModule
     {
-        private BinanceExcange _binance = new BinanceExcange();
+        private BinanceHelper _binance = new BinanceHelper();
 
         public IEndpointRouteBuilder MapEndpoint(IEndpointRouteBuilder endpoints)
         {
@@ -20,17 +20,38 @@ namespace stock_api.Features.ExchangeFeatures.BinanceFeature
 
 
         #region CRUD methods
-        // TODO: refactor her og måske bare smid BinanceExchange.cs ind i feature mappe
-        // og brug den som helper methods. Og alt, som har noget med db at gøre er i denne fil.
         internal async Task<IResult> SaveBalance(CustomDbContext db)
         {
-            if (await _binance.AddBalanceToDatabase(db))
+            var balance = await _binance.GetBalance();
+            if (balance == null) return Results.BadRequest();
+
+            ICollection<Stock> stocksToAdd = new List<Stock>();
+            foreach (var asset in balance)
             {
-                return Results.Ok();
-            } else
-            {
-                return Results.NotFound();
+                Stock stock = await _binance.GetDefaultCryptoStock(asset, 2);
+                // -1.0 on error
+                if (stock.Price != -1.0)
+                    stocksToAdd.Add(stock);
+                else
+                {
+                    // log error
+                }
             }
+
+            try
+            {
+                await db.Stocks.AddRangeAsync(stocksToAdd);
+                await db.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                // log error
+                return Results.BadRequest(ex.Message);
+            }
+
+            return balance.Count == stocksToAdd.Count
+                ? Results.Ok()
+                : Results.Problem(detail: $"Only added {stocksToAdd.Count}/{balance.Count} assets to DB.");
         }
 
         #endregion

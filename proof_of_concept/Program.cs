@@ -1,10 +1,10 @@
 ﻿using stock_api;
-using stock_api.Exchanges.Binance;
+using stock_api.Features.ExchangeFeatures.BinanceFeature;
 
 const string _apiKey = Credential.BinanceApiKey;
 const string _secretKey = Credential.BinanceApiSecret;
 
-BinanceExcange binance = new BinanceExcange();
+BinanceHelper binance = new BinanceHelper();
 
 var hej = await binance.GetTimeStamp();
 Console.WriteLine(hej);

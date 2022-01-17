@@ -13,6 +13,14 @@
 
         public int UserId { get; set; }
         public User? User { get; set; }
+
+
+
+        #region Methods
+        public double GetValue() => this.Amount * this.Price;
+
+        #endregion
+
     }
 
 
@@ -21,6 +29,7 @@
         Fund,
         Share,
         Crypto,
-        Bond
+        Bond,
+        Cash
     }
 }
