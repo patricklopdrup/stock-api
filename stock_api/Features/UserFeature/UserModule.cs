@@ -7,6 +7,8 @@ namespace stock_api.Features.UserFeature
         public IEndpointRouteBuilder MapEndpoint(IEndpointRouteBuilder endpoints)
         {
             endpoints.MapGet("/user", GetUsers);
+            endpoints.MapGet("/user/{id}/stock", GetUserStocks);
+            endpoints.MapGet("/user/{id}/totalvalue", GetUsersTotalStockValue);
             endpoints.MapPost("/user", AddUser);
             endpoints.MapDelete("/user/{id}", DeleteUserById);
 
@@ -24,6 +26,25 @@ namespace stock_api.Features.UserFeature
         {
             return await db.Users.ToListAsync();
         }
+
+
+        internal async Task<List<Stock>> GetUserStocks(int id, CustomDbContext db)
+        {
+            return await db.Stocks.Where(stock => stock.UserId == id).ToListAsync();
+        }
+
+        internal async Task<double> GetUsersTotalStockValue(int id, CustomDbContext db)
+        {
+            double total = 0.0;
+            var userStocks = await GetUserStocks(id, db);
+            foreach (var stock in userStocks.OrderBy(stock => stock.CreatedDate).DistinctBy(stock => stock.Name))
+            {
+                total += stock.GetTotalValue();
+            }
+            
+            return total;
+        }
+
 
         internal async Task<IResult> AddUser(UserDto userDto, CustomDbContext db)
         {

@@ -17,7 +17,10 @@
 
 
         #region Methods
-        public double GetValue() => this.Amount * this.Price;
+        /// <summary>
+        /// Get the total value of a stock
+        /// </summary>
+        public double GetTotalValue() => this.Amount * this.Price;
 
         #endregion
 
