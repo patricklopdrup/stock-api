@@ -37,9 +37,9 @@ namespace stock_api.Features.UserFeature
         {
             double total = 0.0;
             var userStocks = await GetUserStocks(id, db);
-            foreach (var stock in userStocks.OrderBy(stock => stock.CreatedDate).DistinctBy(stock => stock.Name))
+            foreach (var stock in userStocks)
             {
-                total += stock.GetTotalValue();
+                total += stock.GetTotalValue(db);
             }
             
             return total;

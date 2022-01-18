@@ -25,22 +25,31 @@ namespace stock_api.Features.ExchangeFeatures.BinanceFeature
             var balance = await _binance.GetBalance();
             if (balance == null) return Results.BadRequest();
 
-            ICollection<Stock> stocksToAdd = new List<Stock>();
+            ICollection<Stock> newStocks = new List<Stock>();
+            ICollection<DailyPrice> stocksToUpdate = new List<DailyPrice>();
             foreach (var asset in balance)
             {
-                Stock stock = await _binance.GetDefaultCryptoStock(asset, 2);
-                // -1.0 on error
-                if (stock.Price != -1.0)
-                    stocksToAdd.Add(stock);
+                Stock stock = _binance.GetDefaultCryptoStock(asset, 1);
+
+                if (stock.IsNewInPortfolio(db))
+                {
+                    newStocks.Add(stock);
+                    DailyPrice updateFirstTime = await _binance.GetUpdateCryptoStock(stock);
+                    stocksToUpdate.Add(updateFirstTime);
+                }
                 else
                 {
-                    // log error
+                    DailyPrice updateStock = await _binance.GetUpdateCryptoStock(stock);
+                    stocksToUpdate.Add(updateStock);
                 }
             }
 
             try
             {
-                await db.Stocks.AddRangeAsync(stocksToAdd);
+                var addUpdate = db.DailyPrices.AddRangeAsync(stocksToUpdate);
+                var addNew = db.Stocks.AddRangeAsync(newStocks);
+                await Task.WhenAll(addUpdate, addNew);
+
                 await db.SaveChangesAsync();
             }
             catch (Exception ex)
@@ -49,9 +58,9 @@ namespace stock_api.Features.ExchangeFeatures.BinanceFeature
                 return Results.BadRequest(ex.Message);
             }
 
-            return balance.Count == stocksToAdd.Count
+            return balance.Count == stocksToUpdate.Count
                 ? Results.Ok()
-                : Results.Problem(detail: $"Only added {stocksToAdd.Count}/{balance.Count} assets to DB.");
+                : Results.Problem(detail: $"Only updated {stocksToUpdate.Count}/{balance.Count} assets to DB.");
         }
 
         #endregion

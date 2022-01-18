@@ -12,8 +12,8 @@ using stock_api.Dal;
 namespace stock_api.Migrations
 {
     [DbContext(typeof(CustomDbContext))]
-    [Migration("20220117172651_added_cach")]
-    partial class added_cach
+    [Migration("20220118135811_init")]
+    partial class init
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -24,13 +24,53 @@ namespace stock_api.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder, 1L, 1);
 
-            modelBuilder.Entity("stock_api.Models.Stock", b =>
+            modelBuilder.Entity("stock_api.Models.DailyPrice", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<double?>("ClosePrice")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<double?>("HighPrice")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<double?>("LowPrice")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("OpenPrice")
+                        .HasColumnType("float");
+
+                    b.Property<double>("Price")
+                        .HasColumnType("float");
+
+                    b.Property<string>("StockTicker")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StockTicker");
+
+                    b.ToTable("DailyPrice");
+                });
+
+            modelBuilder.Entity("stock_api.Models.Stock", b =>
+                {
+                    b.Property<string>("Ticker")
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<double>("Amount")
                         .HasColumnType("float");
@@ -40,6 +80,10 @@ namespace stock_api.Migrations
 
                     b.Property<string>("Currency")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Id")
+                        .HasColumnType("int")
+                        .HasColumnOrder(0);
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -53,6 +97,9 @@ namespace stock_api.Migrations
                     b.Property<DateTime?>("PurchaseDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("SoldDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("Type")
                         .HasColumnType("int");
 
@@ -62,7 +109,7 @@ namespace stock_api.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
-                    b.HasKey("Id");
+                    b.HasKey("Ticker");
 
                     b.HasIndex("UserId");
 
@@ -103,6 +150,17 @@ namespace stock_api.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("stock_api.Models.DailyPrice", b =>
+                {
+                    b.HasOne("stock_api.Models.Stock", "Stock")
+                        .WithMany("DailyPrices")
+                        .HasForeignKey("StockTicker")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Stock");
+                });
+
             modelBuilder.Entity("stock_api.Models.Stock", b =>
                 {
                     b.HasOne("stock_api.Models.User", "User")
@@ -112,6 +170,11 @@ namespace stock_api.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("stock_api.Models.Stock", b =>
+                {
+                    b.Navigation("DailyPrices");
                 });
 
             modelBuilder.Entity("stock_api.Models.User", b =>

@@ -11,6 +11,7 @@ namespace stock_api.Dal
 
         public DbSet<User> Users { get; set; }
         public DbSet<Stock> Stocks { get; set; }
+        public DbSet<DailyPrice> DailyPrices { get; set; }
 
 
 

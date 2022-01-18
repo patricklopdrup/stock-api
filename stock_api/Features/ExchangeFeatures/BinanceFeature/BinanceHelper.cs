@@ -40,24 +40,22 @@ namespace stock_api.Features.ExchangeFeatures.BinanceFeature
 
 
         /// <summary>
-        /// Get a Stock object populated as a crypto stock. Will also find the price of the crypto.
+        /// Get a Stock object populated as a crypto stock.
         /// </summary>
         /// <param name="asset">The asset to make into a Stock object.</param>
         /// <param name="userId">The ID of the user who owns the stock.</param>
         /// <returns>A populated Stock object</returns>
-        public async Task<Stock> GetDefaultCryptoStock(JToken asset, int userId)
+        public Stock GetDefaultCryptoStock(JToken asset, int userId)
         {
             string name = asset["asset"].ToString();
             double amount = (double)asset["free"];
 
-            double price = await GetPriceOfCrypto(name);
-
             Stock stock = new Stock
             {
+                Ticker = name,
                 Name = name,
                 Amount = amount,
                 Type = StockType.Crypto,
-                Price = price,
                 Currency = "USD",
                 UserId = userId
             };
@@ -67,9 +65,28 @@ namespace stock_api.Features.ExchangeFeatures.BinanceFeature
 
 
         /// <summary>
+        /// Get a DailyPrice crypto object for a stock object.
+        /// </summary>
+        /// <param name="stock">The ticker of the stock we update for.</param>
+        /// <returns>A DailyPrice object for a crypto stock.</returns>
+        public async Task<DailyPrice> GetUpdateCryptoStock(Stock stock)
+        {
+            double price = await GetPriceOfCrypto(stock.Ticker);
+
+            DailyPrice updateStock = new DailyPrice()
+            {
+                Price = price,
+                StockTicker = stock.Ticker
+            };
+
+            return updateStock;
+        }
+
+
+        /// <summary>
         /// Get the price of a crypto in USD. This method compare the crypto to USDT.
         /// </summary>
-        /// <param name="name">The name of the crypto you want the price of.</param>
+        /// <param name="ticker">The name/ticker of the crypto you want the price of.</param>
         /// <example>For example:
         /// <code>
         /// double btcPrice = await GetPriceOfCrypto("btc");
@@ -77,10 +94,10 @@ namespace stock_api.Features.ExchangeFeatures.BinanceFeature
         /// results in <c>btcPrice</c> having the value 42495.00.
         /// </example>
         /// <returns>The price of the crypto in USD. -1.0 if an error occur.</returns>
-        public async Task<double> GetPriceOfCrypto(string name)
+        public async Task<double> GetPriceOfCrypto(string ticker)
         {
             // Compare the price to the stable coin "USDT"
-            string symbol = $"{name}USDT";
+            string symbol = $"{ticker}USDT";
             var result = await SendUnsignedRequest("/api/v3/ticker/price", symbol: symbol);
             if (result == null)
             {
