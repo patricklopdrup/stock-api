@@ -18,9 +18,12 @@ namespace stock_api.Models
         public string? Name { get; set; }
         public double Amount { get; set; }
         public string? Currency { get; set; }
+        public string? Sector { get; set; }
+        public string? SubSector { get; set; }
         public DateTime? PurchaseDate { get; set; }
         public DateTime? SoldDate { get; set; }
         public StockType Type { get; set; }
+        public DateTime? UpdatedDate { get; set; }
 
         // One-to-many between Stock and User. One user can have many stocks
         public int UserId { get; set; }
