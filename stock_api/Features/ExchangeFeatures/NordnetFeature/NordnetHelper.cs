@@ -110,5 +110,35 @@ namespace stock_api.Features.ExchangeFeatures.NordnetFeature
             return res.IsSuccessStatusCode;
         }
 
+
+        public async Task<JArray> GetPositionsForAllAccounts()
+        {
+            await UpdateSessionCookie();
+
+
+
+            return null;
+        }
+
+
+        public async Task<ICollection<int>> GetAllAccountIds()
+        {
+            await UpdateSessionCookie();
+
+            var url = new Uri($"{_baseUrl}/accounts");
+            _cookieContainer.Add(url, _cookieJar);
+            ICollection<int> accountIds = new List<int>();
+            var response = await _httpClient.GetAsync(url);
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var jsonArray = JArray.Parse(content);
+                foreach (var account in jsonArray)
+                    accountIds.Add((int)account["accid"]);
+            }
+
+            return accountIds;
+        }
+
     }
 }
