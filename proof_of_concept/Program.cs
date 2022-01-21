@@ -18,6 +18,8 @@ NordnetHelper nordnet = new NordnetHelper();
 string _username = Credential.NordnetUsername;
 string _password = Credential.NordnetPassword;
 
-var hej = await nordnet.GetSessionCookie();
+await nordnet.UpdateSessionCookie();
+
+await nordnet.UpdateSessionCookie();
 
 Console.ReadLine();

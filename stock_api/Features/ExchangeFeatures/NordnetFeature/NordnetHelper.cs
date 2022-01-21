@@ -17,24 +17,30 @@ namespace stock_api.Features.ExchangeFeatures.NordnetFeature
 
         // Nordnet API documentation: https://www.nordnet.dk/externalapi/docs/api
 
+        public NordnetHelper()
+        {
+            _handler.CookieContainer = _cookieContainer;
+        }
+
         private readonly string _baseUrl = "https://www.nordnet.dk/api/2";
         private string _username = Credential.NordnetUsername;
         private string _password = Credential.NordnetPassword;
-        private HttpClient _httpClient;
 
-        public static string SessionCookie;
+        private static CookieContainer _cookieContainer = new CookieContainer();
+        private static HttpClientHandler _handler = new HttpClientHandler();
+        private static HttpClient _httpClient = new HttpClient(_handler);
+
+        /// CookieCollection which holds the cookies from <see cref="NordnetHelper.UpdateSessionCookie"/>.
+        private static CookieCollection _cookieJar = new CookieCollection();
 
         /// <summary>
-        /// Login to Nordnet and get a NEXT session cookie to be used with other API calls.
+        /// Login to Nordnet and update the cookieCollection with NEXT session cookie to be used with other API calls.
         /// </summary>
-        /// <returns>A NEXT session cookie as a string. E.g. NEXT=5c75de177fb86g46e9e9c3463q0f26864f70835c</returns>
-        public async Task<string> GetSessionCookie()
+        public async Task UpdateSessionCookie()
         {
-            CookieContainer cookieContainer = new CookieContainer();
-            HttpClientHandler handler = new HttpClientHandler();
-            _httpClient = new HttpClient(handler);
-            CookieCollection cookies = new CookieCollection();
-            handler.CookieContainer = cookieContainer;
+            // Do not login again if a session is already up and running
+            if (await IsCookieCollectionValid())
+                return;
 
             // Set headers for Nordnet
             _httpClient.DefaultRequestHeaders.Add("Accept-Language", "en");
@@ -47,7 +53,7 @@ namespace stock_api.Features.ExchangeFeatures.NordnetFeature
             var res1 = await _httpClient.PostAsync(url1, null);
             if (res1.IsSuccessStatusCode)
             {
-                cookies = cookieContainer.GetCookies(url1);
+                _cookieJar = _cookieContainer.GetCookies(url1);
             }
 
             // Actual login to get the session-key/session cookie. E.g. "NEXT=34jlh3jhfjht4"
@@ -60,29 +66,49 @@ namespace stock_api.Features.ExchangeFeatures.NordnetFeature
             var json = JsonConvert.SerializeObject(info); 
             var payload = new StringContent(json, Encoding.UTF8, "application/json");
 
-            cookieContainer.Add(url2, cookies);
-            var res3 = await _httpClient.PostAsync(url2, payload);
-            if (res3.IsSuccessStatusCode)
+            _cookieContainer.Add(url2, _cookieJar);
+            var res2 = await _httpClient.PostAsync(url2, payload);
+            if (res2.IsSuccessStatusCode)
             {
-                var content = await res3.Content.ReadAsStringAsync();
-                var jsonRes = JObject.Parse(content);
-                if (jsonRes.ContainsKey("session_key"))
+                // Update the cookieCollection to be used by other API calls
+                _cookieJar = _cookieContainer.GetCookies(url2);
+                if (_cookieJar.Any(cookie => cookie.Name == "NEXT"))
                 {
-                    var sessionCookie = "NEXT=" + jsonRes["session_key"].ToString();
-                    SessionCookie = sessionCookie;
-                    return sessionCookie;
+                    // Log that the session cookie has been updated
                 }
                 else
                 {
-                    return "";
+                    // Log error; NEXT cookie not in cookieJar
                 }
             }
-
-            return "";
+            else
+            {
+                // Log error; res2 not successful
+            }
         }
 
 
-        
+        /// <summary>
+        /// Check if a session is valid. If this is true there is no need to login again.
+        /// </summary>
+        /// <returns>True if a session is valid; false otherwise.</returns>
+        private async Task<bool> IsCookieCollectionValid()
+        {
+            // Basic API call that requires a valid NEXT session cookie
+            var checkUrl = new Uri($"{_baseUrl}/accounts");
+            _cookieContainer.Add(checkUrl, _cookieJar);
+            var res = await _httpClient.GetAsync(checkUrl);
+            if (res.IsSuccessStatusCode)
+            {
+                // Log that a session is already up
+            }
+            else
+            {
+                // Log that a new session is going to be made
+            }
+
+            return res.IsSuccessStatusCode;
+        }
 
     }
 }
