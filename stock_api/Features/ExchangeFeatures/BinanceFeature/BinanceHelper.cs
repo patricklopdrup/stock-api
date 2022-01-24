@@ -1,10 +1,11 @@
 ﻿using Newtonsoft.Json.Linq;
+using stock_api.Features.StockFeature;
 using System.Security.Cryptography;
 using System.Text;
 
 namespace stock_api.Features.ExchangeFeatures.BinanceFeature
 {
-    public class BinanceHelper
+    public class BinanceHelper : StockHelper
     {
         // Binance API documentation: https://binance-docs.github.io/apidocs/#change-log
 
@@ -13,75 +14,6 @@ namespace stock_api.Features.ExchangeFeatures.BinanceFeature
         private const string _secretKey = Credential.BinanceApiSecret;
         private HttpClient _httpClient = new HttpClient();
 
-
-        /// <summary>
-        /// Get the non-zero Binance balance from the account.
-        /// </summary>
-        /// <returns>A JArray with the assets as JTokens.</returns>
-        public async Task<JArray> GetBalance()
-        {
-            JArray balance = new JArray();
-            JObject binanceAccount = await SendSignedRequest("/api/v3/account");
-            var accountBalance = binanceAccount["balances"];
-            if (accountBalance == null)
-            {
-                return new JArray();
-            }
-
-            foreach (var asset in accountBalance)
-            {
-                double amount = (double)asset["free"];
-                if (amount > 0.0)
-                    balance.Add(asset);
-            }
-
-            return balance;
-        }
-
-
-        /// <summary>
-        /// Get a Stock object populated as a crypto stock.
-        /// </summary>
-        /// <param name="asset">The asset to make into a Stock object.</param>
-        /// <param name="userId">The ID of the user who owns the stock.</param>
-        /// <returns>A populated Stock object</returns>
-        public Stock GetDefaultCryptoStock(JToken asset, int userId)
-        {
-            string name = asset["asset"].ToString();
-
-            Stock stock = new Stock
-            {
-                Ticker = name,
-                Name = name,
-                Type = StockType.Crypto,
-                Currency = "USD",
-                UserId = userId
-            };
-
-            return stock;
-        }
-
-
-        /// <summary>
-        /// Get a DailyPrice crypto object for a stock object.
-        /// </summary>
-        /// <param name="stock">The ticker of the stock we update for.</param>
-        /// <param name="asset">The JToken object of the asset to update.</param>
-        /// <returns>A DailyPrice object for a crypto stock.</returns>
-        public async Task<DailyPrice> GetUpdateCryptoStock(Stock stock, JToken asset)
-        {
-            double price = await GetPriceOfCrypto(stock.Ticker);
-            double amount = (double)asset["free"];
-
-            DailyPrice updateStock = new DailyPrice()
-            {
-                Price = price,
-                Amount = amount,
-                StockTicker = stock.Ticker
-            };
-
-            return updateStock;
-        }
 
 
         /// <summary>
@@ -213,5 +145,72 @@ namespace stock_api.Features.ExchangeFeatures.BinanceFeature
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Get the non-zero Binance balance from the account.
+        /// </summary>
+        /// <returns>A JArray with the assets as JTokens.</returns>
+        internal async override Task<JArray> GetBalance()
+        {
+            JArray balance = new JArray();
+            JObject binanceAccount = await SendSignedRequest("/api/v3/account");
+            var accountBalance = binanceAccount["balances"];
+            if (accountBalance == null)
+            {
+                return new JArray();
+            }
+
+            foreach (var asset in accountBalance)
+            {
+                double amount = (double)asset["free"];
+                if (amount > 0.0)
+                    balance.Add(asset);
+            }
+
+            return balance;
+        }
+
+
+        /// <summary>
+        /// Get a Stock object populated as a crypto stock.
+        /// </summary>
+        /// <param name="asset">The asset to make into a Stock object.</param>
+        /// <param name="userId">The ID of the user who owns the stock.</param>
+        /// <returns>A populated Stock object</returns>
+        internal override Stock GetDefaultStock(JToken asset, int userId)
+        {
+            string name = asset["asset"].ToString();
+            Stock stock = new Stock
+            {
+                Ticker = name,
+                Name = name,
+                Type = StockType.Crypto,
+                Currency = "USD",
+                UserId = userId
+            };
+
+            return stock;
+        }
+
+
+        /// <summary>
+        /// Get a DailyPrice crypto object for a stock object.
+        /// </summary>
+        /// <param name="stock">The ticker of the stock we update for.</param>
+        /// <param name="asset">The JToken object of the asset to update.</param>
+        /// <returns>A DailyPrice object for a crypto stock.</returns>
+        internal async override Task<DailyPrice> GetUpdateStock(JToken asset, Stock stock)
+        {
+            double price = await GetPriceOfCrypto(stock.Ticker);
+            double amount = (double)asset["free"];
+
+            DailyPrice updateStock = new DailyPrice()
+            {
+                Price = price,
+                Amount = amount,
+                StockTicker = stock.Ticker
+            };
+
+            return updateStock;
+        }
     }
 }

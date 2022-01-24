@@ -181,22 +181,16 @@ namespace stock_api.Features.ExchangeFeatures.NordnetFeature
 
         internal override Task<DailyPrice> GetUpdateStock(JToken asset, Stock stock)
         {
-            DailyPrice hej = new DailyPrice();
-            hej.Price = (double)asset["main_market_price"]["value"];
-            hej.Amount = (double)asset["qty"];
-            hej.PurchasePrice = (double)asset["acq_price_acc"]["value"];
-            hej.OpenPrice = (double)asset["morning_price"]["value"];
-            hej.StockTicker = stock.Ticker;
-            //DailyPrice updateStock = new DailyPrice()
-            //{
-            //    Price = (double)instrument["main_market_price"]["value"],
-            //    Amount = (double)instrument["qty"],
-            //    PurchasePrice = (double)instrument["acq_price_acc"]["value"],
-            //    OpenPrice = (double)instrument["morning_price"]["value"],
-            //    StockTicker = stock.Ticker
-            //};
+            DailyPrice updateStock = new DailyPrice()
+            {
+                Price = (double)asset["main_market_price"]["value"],
+                Amount = (double)asset["qty"],
+                PurchasePrice = (double)asset["acq_price_acc"]["value"],
+                OpenPrice = (double)asset["morning_price"]["value"],
+                StockTicker = stock.Ticker
+            };
 
-            return Task.Run(() => hej);
+            return Task.Run(() => updateStock);
         }
     }
 }

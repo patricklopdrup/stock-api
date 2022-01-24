@@ -8,7 +8,7 @@ namespace stock_api.Features.ExchangeFeatures.BinanceFeature
 
         public IEndpointRouteBuilder MapEndpoint(IEndpointRouteBuilder endpoints)
         {
-            endpoints.MapGet("/binance/savebalance", SaveBalance);
+            endpoints.MapGet("/binance/savebalance", SaveBinanceBalance);
 
             return endpoints;
         }
@@ -20,44 +20,9 @@ namespace stock_api.Features.ExchangeFeatures.BinanceFeature
 
 
         #region CRUD methods
-        internal async Task<IResult> SaveBalance(CustomDbContext db)
+        internal async Task<IResult> SaveBinanceBalance(CustomDbContext db, int userId)
         {
-            var balance = await _binance.GetBalance();
-            if (balance == null) return Results.BadRequest();
-
-            ICollection<Stock> newStocks = new List<Stock>();
-            ICollection<DailyPrice> stocksToUpdate = new List<DailyPrice>();
-            foreach (var asset in balance)
-            {
-                Stock stock = _binance.GetDefaultCryptoStock(asset, 1);
-
-                // Only add a new stock the first time it is seen
-                if (stock.IsNewInPortfolio(db))
-                {
-                    newStocks.Add(stock);
-                }
-                // Update always
-                DailyPrice updateStock = await _binance.GetUpdateCryptoStock(stock, asset);
-                stocksToUpdate.Add(updateStock);
-            }
-
-            try
-            {
-                var addUpdate = db.DailyPrices.AddRangeAsync(stocksToUpdate);
-                var addNew = db.Stocks.AddRangeAsync(newStocks);
-                await Task.WhenAll(addUpdate, addNew);
-
-                await db.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                // log error
-                return Results.BadRequest(ex.Message);
-            }
-
-            return balance.Count == stocksToUpdate.Count
-                ? Results.Ok()
-                : Results.Problem(detail: $"Only updated {stocksToUpdate.Count}/{balance.Count} assets to DB.");
+            return await new BinanceHelper().SaveBalance(db, userId);
         }
 
         #endregion
