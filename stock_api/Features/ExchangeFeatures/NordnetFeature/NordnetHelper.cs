@@ -1,11 +1,12 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using stock_api.Features.StockFeature;
 using System.Net;
 using System.Text;
 
 namespace stock_api.Features.ExchangeFeatures.NordnetFeature
 {
-    public class NordnetHelper
+    public class NordnetHelper : StockHelper
     {
         /// Nordnet api: https://www.nordnet.dk/externalapi/docs/api
         /// Brug basic auth med brugernavn og password
@@ -111,16 +112,6 @@ namespace stock_api.Features.ExchangeFeatures.NordnetFeature
         }
 
 
-        public async Task<JArray> GetPositionsForAllAccounts()
-        {
-            await UpdateSessionCookie();
-
-
-
-            return null;
-        }
-
-
         public async Task<ICollection<int>> GetAllAccountIds()
         {
             await UpdateSessionCookie();
@@ -140,5 +131,72 @@ namespace stock_api.Features.ExchangeFeatures.NordnetFeature
             return accountIds;
         }
 
+        internal async override Task<JArray> GetBalance()
+        {
+            await UpdateSessionCookie();
+
+            var allPositionsJson = new JArray();
+            var accountIds = await GetAllAccountIds();
+            foreach (var accountId in accountIds)
+            {
+                var url = new Uri($"{_baseUrl}/accounts/{accountId}/positions");
+                _cookieContainer.Add(url, _cookieJar);
+                var response = await _httpClient.GetAsync(url);
+                if (response.IsSuccessStatusCode)
+                {
+                    // Parse the content into a JSON array
+                    var content = await response.Content.ReadAsStringAsync();
+                    var jsonArray = JArray.Parse(content);
+
+                    // Merge posisitions for each account
+                    allPositionsJson.Merge(jsonArray);
+                }
+                else
+                {
+                    // log error
+                }
+            }
+
+            return allPositionsJson;
+        }
+
+        internal override Stock GetDefaultStock(JToken asset, int userId)
+        {
+            var instrument = asset["instrument"];
+            // If an instrument has "underlyings" it means that it is a fund otherwise a single share
+            var stockType = instrument["underlyings"] is null ? StockType.Share : StockType.Fund;
+
+            Stock stock = new Stock()
+            {
+                Ticker = instrument["symbol"].ToString(),
+                Name = instrument["name"].ToString(),
+                Currency = instrument["currency"].ToString(),
+                IsinCode = instrument["isin_code"].ToString(),
+                Type = stockType,
+                UserId = userId
+            };
+
+            return stock;
+        }
+
+        internal override Task<DailyPrice> GetUpdateStock(JToken asset, Stock stock)
+        {
+            DailyPrice hej = new DailyPrice();
+            hej.Price = (double)asset["main_market_price"]["value"];
+            hej.Amount = (double)asset["qty"];
+            hej.PurchasePrice = (double)asset["acq_price_acc"]["value"];
+            hej.OpenPrice = (double)asset["morning_price"]["value"];
+            hej.StockTicker = stock.Ticker;
+            //DailyPrice updateStock = new DailyPrice()
+            //{
+            //    Price = (double)instrument["main_market_price"]["value"],
+            //    Amount = (double)instrument["qty"],
+            //    PurchasePrice = (double)instrument["acq_price_acc"]["value"],
+            //    OpenPrice = (double)instrument["morning_price"]["value"],
+            //    StockTicker = stock.Ticker
+            //};
+
+            return Task.Run(() => hej);
+        }
     }
 }

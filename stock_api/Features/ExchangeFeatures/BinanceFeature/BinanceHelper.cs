@@ -48,13 +48,11 @@ namespace stock_api.Features.ExchangeFeatures.BinanceFeature
         public Stock GetDefaultCryptoStock(JToken asset, int userId)
         {
             string name = asset["asset"].ToString();
-            double amount = (double)asset["free"];
 
             Stock stock = new Stock
             {
                 Ticker = name,
                 Name = name,
-                Amount = amount,
                 Type = StockType.Crypto,
                 Currency = "USD",
                 UserId = userId
@@ -68,14 +66,17 @@ namespace stock_api.Features.ExchangeFeatures.BinanceFeature
         /// Get a DailyPrice crypto object for a stock object.
         /// </summary>
         /// <param name="stock">The ticker of the stock we update for.</param>
+        /// <param name="asset">The JToken object of the asset to update.</param>
         /// <returns>A DailyPrice object for a crypto stock.</returns>
-        public async Task<DailyPrice> GetUpdateCryptoStock(Stock stock)
+        public async Task<DailyPrice> GetUpdateCryptoStock(Stock stock, JToken asset)
         {
             double price = await GetPriceOfCrypto(stock.Ticker);
+            double amount = (double)asset["free"];
 
             DailyPrice updateStock = new DailyPrice()
             {
                 Price = price,
+                Amount = amount,
                 StockTicker = stock.Ticker
             };
 
