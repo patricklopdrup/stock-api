@@ -16,11 +16,14 @@ namespace stock_api.Models
         [Key]
         public string Ticker { get; set; }
         public string? Name { get; set; }
-        public double Amount { get; set; }
         public string? Currency { get; set; }
+        public string? Sector { get; set; }
+        public string? SubSector { get; set; }
+        public string? IsinCode { get; set; }
         public DateTime? PurchaseDate { get; set; }
         public DateTime? SoldDate { get; set; }
         public StockType Type { get; set; }
+        public DateTime? UpdatedDate { get; set; }
 
         // One-to-many between Stock and User. One user can have many stocks
         public int UserId { get; set; }
@@ -37,8 +40,8 @@ namespace stock_api.Models
         /// </summary>
         public double GetTotalValue(CustomDbContext db)
         {
-            var latestPrice = db.DailyPrices.Where(stock => stock.StockTicker == this.Ticker).OrderByDescending(dailyPrice => dailyPrice.CreatedDate).Select(dailyPrice => dailyPrice.Price).FirstOrDefault();
-            return latestPrice * this.Amount;
+            var latest = db.DailyPrices.Where(stock => stock.StockTicker == this.Ticker).OrderByDescending(dailyPrice => dailyPrice.CreatedDate).FirstOrDefault();
+            return latest != null ? latest.Price * latest.Amount : -1.0;
         }
 
 

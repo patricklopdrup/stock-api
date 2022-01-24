@@ -7,6 +7,8 @@ namespace stock_api.Models
     {
         public int Id { get; set; }
         public double Price { get; set; }
+        public double Amount { get; set; }
+        public double? PurchasePrice { get; set; }
 
         public double? OpenPrice { get; set; }
         public double? HighPrice { get; set; }
@@ -15,6 +17,7 @@ namespace stock_api.Models
 
         
         public string StockTicker { get; set; }
+
         [ForeignKey("StockTicker")]
         public Stock? Stock { get; set; }
 

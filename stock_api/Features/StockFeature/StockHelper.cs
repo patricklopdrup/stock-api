@@ -1,35 +1,20 @@
 ﻿using Newtonsoft.Json.Linq;
 
-namespace stock_api.Features.ExchangeFeatures.BinanceFeature
+namespace stock_api.Features.StockFeature
 {
-    public class BinanceModule : IModule
+    public abstract class StockHelper
     {
-        private BinanceHelper _binance = new BinanceHelper();
-
-        public IEndpointRouteBuilder MapEndpoint(IEndpointRouteBuilder endpoints)
+        internal async Task<IResult> SaveBalance(CustomDbContext db, int userId)
         {
-            endpoints.MapGet("/binance/savebalance", SaveBalance);
-
-            return endpoints;
-        }
-
-        public WebApplicationBuilder RegisterModule(WebApplicationBuilder builder)
-        {
-            return builder;
-        }
-
-
-        #region CRUD methods
-        internal async Task<IResult> SaveBalance(CustomDbContext db)
-        {
-            var balance = await _binance.GetBalance();
+            var balance = await GetBalance();
             if (balance == null) return Results.BadRequest();
 
             ICollection<Stock> newStocks = new List<Stock>();
             ICollection<DailyPrice> stocksToUpdate = new List<DailyPrice>();
+
             foreach (var asset in balance)
             {
-                Stock stock = _binance.GetDefaultCryptoStock(asset, 1);
+                Stock stock = GetDefaultStock(asset, userId);
 
                 // Only add a new stock the first time it is seen
                 if (stock.IsNewInPortfolio(db))
@@ -37,7 +22,7 @@ namespace stock_api.Features.ExchangeFeatures.BinanceFeature
                     newStocks.Add(stock);
                 }
                 // Update always
-                DailyPrice updateStock = await _binance.GetUpdateCryptoStock(stock, asset);
+                DailyPrice updateStock = await GetUpdateStock(asset, stock);
                 stocksToUpdate.Add(updateStock);
             }
 
@@ -60,6 +45,12 @@ namespace stock_api.Features.ExchangeFeatures.BinanceFeature
                 : Results.Problem(detail: $"Only updated {stocksToUpdate.Count}/{balance.Count} assets to DB.");
         }
 
-        #endregion
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        internal abstract Task<JArray> GetBalance();
+        internal abstract Stock GetDefaultStock(JToken asset, int userId);
+        internal abstract Task<DailyPrice> GetUpdateStock(JToken asset, Stock stock);
     }
 }
