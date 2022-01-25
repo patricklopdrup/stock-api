@@ -131,14 +131,18 @@ namespace stock_api.Features.ExchangeFeatures.NordnetFeature
             return accountIds;
         }
 
-        internal async override Task<JArray> GetBalance()
+        public async override Task<JArray> GetBalance()
         {
             await UpdateSessionCookie();
 
-            var allPositionsJson = new JArray();
+            var allAccountsJson = new JArray();
             var accountIds = await GetAllAccountIds();
+            // Merge all positions for all accounts into a json array
             foreach (var accountId in accountIds)
             {
+                var cashInfo = await GetCashInfoForAccount(accountId);
+                allAccountsJson.Merge(cashInfo);
+
                 var url = new Uri($"{_baseUrl}/accounts/{accountId}/positions");
                 _cookieContainer.Add(url, _cookieJar);
                 var response = await _httpClient.GetAsync(url);
@@ -149,7 +153,7 @@ namespace stock_api.Features.ExchangeFeatures.NordnetFeature
                     var jsonArray = JArray.Parse(content);
 
                     // Merge posisitions for each account
-                    allPositionsJson.Merge(jsonArray);
+                    allAccountsJson.Merge(jsonArray);
                 }
                 else
                 {
@@ -157,11 +161,41 @@ namespace stock_api.Features.ExchangeFeatures.NordnetFeature
                 }
             }
 
-            return allPositionsJson;
+            return allAccountsJson;
         }
+
+
+        /// <summary>
+        /// Get a JSON object with info about the account.
+        /// E.g. the cash for the account -> "account_sum": { "currency": "DKK", "value": 123.45 }
+        /// </summary>
+        /// <param name="accountId">The ID of the account to get info from.</param>
+        /// <returns>A JArray with all the info.</returns>
+        internal async Task<JArray> GetCashInfoForAccount(int accountId)
+        {
+            var url = new Uri($"{_baseUrl}/accounts/{accountId}/info");
+            _cookieContainer.Add(url, _cookieJar);
+            var response = await _httpClient.GetAsync(url);
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var jsonArray = JArray.Parse(content);
+                return jsonArray;
+            }
+            else
+            {
+                // log error
+            }
+            return new JArray();
+        }
+
 
         internal override Stock GetDefaultStock(JToken asset, int userId)
         {
+            // Check if it is cach and not a fund/share
+            if (asset["account_sum"] is not null)
+                return GetDefaultCashStock(asset, userId);
+
             var instrument = asset["instrument"];
             // If an instrument has "underlyings" it means that it is a fund otherwise a single share
             var stockType = instrument["underlyings"] is null ? StockType.Share : StockType.Fund;
@@ -179,8 +213,37 @@ namespace stock_api.Features.ExchangeFeatures.NordnetFeature
             return stock;
         }
 
+
+        private Stock GetDefaultCashStock(JToken asset, int userId)
+        {
+            return new Stock()
+            {
+                Ticker = "NordnetCash",
+                Name = "NordnetCash",
+                Currency = asset["account_sum"]["currency"].ToString(),
+                Type = StockType.Cash,
+                UserId = userId
+            };
+        }
+
+
+        private DailyPrice GetUpdateCashStock(JToken asset, Stock stock)
+        {
+            return new DailyPrice()
+            {
+                Price = (double)asset["account_sum"]["value"],
+                Amount = 1.0,
+                StockTicker = stock.Ticker
+            };
+        }
+
+
         internal override Task<DailyPrice> GetUpdateStock(JToken asset, Stock stock)
         {
+            // Check if it is cach and not a fund/share
+            if (asset["account_sum"] is not null)
+                return Task.Run(() => GetUpdateCashStock(asset, stock));
+
             DailyPrice updateStock = new DailyPrice()
             {
                 Price = (double)asset["main_market_price"]["value"],

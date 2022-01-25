@@ -15,8 +15,6 @@ namespace stock_api.Extensions
 
             app.UseHttpsRedirection();
 
-            app.MapGet("/", () => "Hej");
-
             return app;
         }
     }

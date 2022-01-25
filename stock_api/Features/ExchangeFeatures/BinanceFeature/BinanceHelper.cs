@@ -149,7 +149,7 @@ namespace stock_api.Features.ExchangeFeatures.BinanceFeature
         /// Get the non-zero Binance balance from the account.
         /// </summary>
         /// <returns>A JArray with the assets as JTokens.</returns>
-        internal async override Task<JArray> GetBalance()
+        public async override Task<JArray> GetBalance()
         {
             JArray balance = new JArray();
             JObject binanceAccount = await SendSignedRequest("/api/v3/account");

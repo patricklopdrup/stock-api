@@ -49,7 +49,7 @@ namespace stock_api.Features.StockFeature
         /// 
         /// </summary>
         /// <returns></returns>
-        internal abstract Task<JArray> GetBalance();
+        public abstract Task<JArray> GetBalance();
         internal abstract Stock GetDefaultStock(JToken asset, int userId);
         internal abstract Task<DailyPrice> GetUpdateStock(JToken asset, Stock stock);
     }
